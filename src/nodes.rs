@@ -1,9 +1,12 @@
-use select::{
-    node::Node,
-    predicate::{Name, Predicate},
-};
+use crate::table::Header;
 
-use crate::{node_to_text, table::Row};
+use {
+    crate::{table::Row, utils::node_to_text},
+    select::{
+        node::Node,
+        predicate::{Name, Predicate},
+    },
+};
 
 /// Get caption of the table
 pub fn get_caption<'a>(table: &Node<'a>) -> Option<String> {
@@ -11,12 +14,13 @@ pub fn get_caption<'a>(table: &Node<'a>) -> Option<String> {
 }
 
 /// Get header part of the table
-pub fn get_header<'a>(table: &Node<'a>) -> Option<Vec<String>> {
+pub fn get_header<'a>(table: &Node<'a>) -> Option<Vec<Header>> {
     let header = match table.find(Name("thead")).nth(0) {
         // If there's a <thead> tag, get all <th> inside it.
         Some(ref head) => head
             .find(Name("tr").descendant(Name("th")))
             .map(node_to_text)
+            .map(Header::from)
             .collect::<Vec<_>>(),
         // If there ain't <thead> tag, filter out <tr> with <td>, since they are body part.
         None => {
@@ -25,7 +29,11 @@ pub fn get_header<'a>(table: &Node<'a>) -> Option<Vec<String>> {
                 .filter(|tr| tr.find(Name("td")).collect::<Vec<_>>().is_empty())
                 .nth(0)
             {
-                Some(tr) => tr.find(Name("th")).map(node_to_text).collect::<Vec<_>>(),
+                Some(tr) => tr
+                    .find(Name("th"))
+                    .map(node_to_text)
+                    .map(Header::from)
+                    .collect::<Vec<_>>(),
                 None => vec![],
             }
         }
@@ -39,38 +47,31 @@ pub fn get_header<'a>(table: &Node<'a>) -> Option<Vec<String>> {
 
 /// Get body part of the table
 pub fn get_body<'a>(table: &Node<'a>) -> Option<Vec<Row>> {
-    let rows = match table.find(Name("tbody")).nth(0) {
-        // If there's a <tbody> tag, get all <th> and <td> inside it.
-        Some(ref body) => body
-            .find(Name("tr"))
-            .map(|row| {
-                let header = row.find(Name("th")).nth(0).map(node_to_text);
-                let data = row.find(Name("td")).map(node_to_text).collect::<Vec<_>>();
-                Row::from(header, data)
-            })
-            .collect::<Vec<_>>(),
-        // If there ain't <tbody> tag, filter out <tr> with <th>, since they are header part.
-        None => table
-            .find(Name("tr"))
-            .filter(|row| row.find(Name("th")).collect::<Vec<_>>().is_empty())
-            .map(|row| {
-                let data = row.find(Name("td")).map(node_to_text).collect::<Vec<_>>();
-                Row::from(None, data)
-            })
-            .collect::<Vec<_>>(),
-    };
-
-    if rows.is_empty() {
+    let body = table
+        .find(Name("tr"))
+        .map(|row| {
+            let mut headers = row.find(Name("th")).map(node_to_text);
+            let header = headers.next().map(Header::from);
+            let data = row.find(Name("td")).map(node_to_text).collect::<Vec<_>>();
+            Row::from(header, data)
+        })
+        .filter(|row| !row.data().is_empty())
+        .collect::<Vec<_>>();
+    if body.is_empty() {
         return None;
     }
-    Some(rows)
+    Some(body)
 }
 
 /// Get body part of the footer
 pub fn get_footer<'a>(table: &Node<'a>) -> Option<Row> {
     match table.find(Name("tfoot").descendant(Name("tr"))).nth(0) {
         Some(footer) => {
-            let header = footer.find(Name("th")).map(node_to_text).nth(0);
+            let header = footer
+                .find(Name("th"))
+                .map(node_to_text)
+                .nth(0)
+                .map(Header::from);
             let data = footer
                 .find(Name("td"))
                 .map(node_to_text)

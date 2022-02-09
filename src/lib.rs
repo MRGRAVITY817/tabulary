@@ -1,18 +1,14 @@
-pub mod error;
-pub mod nodes;
-pub mod table;
+mod error;
+mod nodes;
+mod table;
+mod utils;
 
 use {
     error::HtmlTableError,
     nodes::{get_body, get_caption, get_footer, get_header},
-    select::{document::Document, node::Node, predicate::Name},
+    select::{document::Document, predicate::Name},
     table::Table,
 };
-
-/// Convert node to text string
-pub fn node_to_text(node: Node) -> String {
-    node.text().trim().to_string()
-}
 
 /// Extract tables in give html string and return formatted string.
 pub fn html_to_table_string(html: &str) -> Result<String, HtmlTableError> {
@@ -24,7 +20,7 @@ pub fn html_to_table_string(html: &str) -> Result<String, HtmlTableError> {
             return Err(HtmlTableError::TableNotFoundInHtmlDocument);
         }
 
-        let _tables = tables
+        return Ok(tables
             .iter()
             .map(|table| {
                 Table::from(
@@ -34,8 +30,9 @@ pub fn html_to_table_string(html: &str) -> Result<String, HtmlTableError> {
                     get_footer(table),
                 )
             })
-            .collect::<Vec<_>>();
-        return Ok("Ok".to_string());
+            .map(|table| table.to_string())
+            .collect::<Vec<_>>()
+            .join("\n\n"));
     }
     Err(HtmlTableError::CannotParseStringToHtml(html.to_owned()))
 }
