@@ -47,20 +47,23 @@ pub fn get_header<'a>(table: &Node<'a>) -> Option<Vec<Header>> {
 
 /// Get body part of the table
 pub fn get_body<'a>(table: &Node<'a>) -> Option<Vec<Row>> {
-    let body = table
-        .find(Name("tr"))
-        .map(|row| {
-            let mut headers = row.find(Name("th")).map(node_to_text);
-            let header = headers.next().map(Header::from);
-            let data = row.find(Name("td")).map(node_to_text).collect::<Vec<_>>();
-            Row::from(header, data)
-        })
-        .filter(|row| !row.data().is_empty())
-        .collect::<Vec<_>>();
-    if body.is_empty() {
-        return None;
+    if let Some(body) = table.find(Name("tbody")).next() {
+        let body = body
+            .find(Name("tr"))
+            .map(|row| {
+                let mut headers = row.find(Name("th")).map(node_to_text);
+                let header = headers.next().map(Header::from);
+                let data = row.find(Name("td")).map(node_to_text).collect::<Vec<_>>();
+                Row::from(header, data)
+            })
+            .filter(|row| !row.data().is_empty())
+            .collect::<Vec<_>>();
+        if body.is_empty() {
+            return None;
+        }
+        return Some(body);
     }
-    Some(body)
+    None
 }
 
 /// Get body part of the footer

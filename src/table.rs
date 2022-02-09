@@ -110,7 +110,12 @@ impl Table {
 impl ToString for Table {
     /// Convert table object into prettified string
     fn to_string(&self) -> String {
-        let caption = format!("<< {: ^20} >>", self.caption().unwrap_or("Table"));
+        let caption = format!(
+            "{:-^20}\n||{: ^16}||\n{:-^20}",
+            "",
+            self.caption().unwrap_or("Table"),
+            ""
+        );
         let header = self
             .header()
             .unwrap_or(&[])
@@ -127,6 +132,6 @@ impl ToString for Table {
             .join("\n");
         let footer = self.footer().unwrap_or(&Row::new()).to_string();
 
-        format!("{caption}\n{header}\n{body}\n{footer}\n")
+        format!("{caption}\n\n{header}\n{body}\n{footer}\n")
     }
 }

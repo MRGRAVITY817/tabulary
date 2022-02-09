@@ -32,7 +32,7 @@ pub fn html_to_table_string(html: &str) -> Result<String, HtmlTableError> {
             })
             .map(|table| table.to_string())
             .collect::<Vec<_>>()
-            .join("\n\n"));
+            .join("\n"));
     }
     Err(HtmlTableError::CannotParseStringToHtml(html.to_owned()))
 }
