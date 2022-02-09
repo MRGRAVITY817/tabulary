@@ -1,20 +1,8 @@
-pub struct Header(String);
-
-impl Header {
-    pub fn from(s: String) -> Self {
-        Self(s)
-    }
-}
-
-impl ToString for Header {
-    fn to_string(&self) -> String {
-        format!("[{: ^18}]", self.0)
-    }
-}
+use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, Table as ComfyTable};
 
 /// Elements in <tr>
 pub struct Row {
-    header: Option<Header>,
+    header: Option<String>,
     data: Vec<String>,
 }
 
@@ -27,40 +15,33 @@ impl Row {
         }
     }
     /// Create new row with args
-    pub fn from(header: Option<Header>, data: Vec<String>) -> Self {
+    pub fn from(header: Option<String>, data: Vec<String>) -> Self {
         Self { header, data }
     }
     /// Get row header
-    pub fn header(&self) -> Option<&Header> {
-        self.header.as_ref()
+    pub fn header(&self) -> Option<&str> {
+        self.header.as_ref().map(String::as_str)
     }
     /// Get row data
     pub fn data(&self) -> Vec<&str> {
         self.data.iter().map(AsRef::as_ref).collect::<Vec<&str>>()
     }
-}
-
-impl ToString for Row {
-    /// Make a string version of row
-    fn to_string(&self) -> String {
-        let header = match self.header() {
-            Some(h) => h.to_string(),
-            None => "".to_string(),
-        };
-        let data = self
-            .data()
-            .iter()
-            .map(|&item| format!("{: ^20}", item))
-            .collect::<Vec<_>>()
-            .join("");
-        format!("{header}{data}")
+    /// Get row total
+    pub fn total(&self) -> Vec<&str> {
+        match self.header() {
+            Some(header) => [vec![header], self.data()]
+                .into_iter()
+                .flatten()
+                .collect::<Vec<&str>>(),
+            None => self.data(),
+        }
     }
 }
 
 /// Elements in <table>
 pub struct Table {
     caption: Option<String>,
-    header: Option<Vec<Header>>,
+    header: Option<Vec<String>>,
     body: Option<Vec<Row>>,
     footer: Option<Row>,
 }
@@ -78,7 +59,7 @@ impl Table {
     /// Create new table with args
     pub fn from(
         caption: Option<String>,
-        header: Option<Vec<Header>>,
+        header: Option<Vec<String>>,
         body: Option<Vec<Row>>,
         footer: Option<Row>,
     ) -> Self {
@@ -94,7 +75,7 @@ impl Table {
         self.caption.as_ref().map(String::as_str)
     }
     /// Get table header
-    pub fn header(&self) -> Option<&[Header]> {
+    pub fn header(&self) -> Option<&[String]> {
         self.header.as_ref().map(|h| h.as_slice())
     }
     /// Get table body
@@ -111,27 +92,30 @@ impl ToString for Table {
     /// Convert table object into prettified string
     fn to_string(&self) -> String {
         let caption = format!(
-            "{:-^20}\n||{: ^16}||\n{:-^20}",
+            "{:-^15}\n{: ^15}\n{:-^15}",
             "",
             self.caption().unwrap_or("Table"),
             ""
         );
-        let header = self
-            .header()
-            .unwrap_or(&[])
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>()
-            .join("");
-        let body = self
-            .body()
-            .unwrap_or(&[])
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>()
-            .join("\n");
-        let footer = self.footer().unwrap_or(&Row::new()).to_string();
+        // Draw a table
+        let mut table = ComfyTable::new();
+        table
+            .load_preset(UTF8_FULL)
+            .apply_modifier(UTF8_ROUND_CORNERS)
+            .set_content_arrangement(comfy_table::ContentArrangement::Dynamic)
+            .set_table_width(80);
+        if let Some(header) = self.header() {
+            table.set_header(header);
+        }
+        if let Some(body) = self.body() {
+            for row in body.into_iter() {
+                table.add_row(row.total());
+            }
+        }
+        if let Some(footer) = self.footer() {
+            table.add_row(footer.total());
+        }
 
-        format!("{caption}\n\n{header}\n{body}\n{footer}\n")
+        format!("{caption}\n{}", table.to_string())
     }
 }

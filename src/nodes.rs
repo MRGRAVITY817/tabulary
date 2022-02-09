@@ -1,5 +1,3 @@
-use crate::table::Header;
-
 use {
     crate::{table::Row, utils::node_to_text},
     select::{
@@ -14,13 +12,12 @@ pub fn get_caption<'a>(table: &Node<'a>) -> Option<String> {
 }
 
 /// Get header part of the table
-pub fn get_header<'a>(table: &Node<'a>) -> Option<Vec<Header>> {
+pub fn get_header<'a>(table: &Node<'a>) -> Option<Vec<String>> {
     let header = match table.find(Name("thead")).nth(0) {
         // If there's a <thead> tag, get all <th> inside it.
         Some(ref head) => head
             .find(Name("tr").descendant(Name("th")))
             .map(node_to_text)
-            .map(Header::from)
             .collect::<Vec<_>>(),
         // If there ain't <thead> tag, filter out <tr> with <td>, since they are body part.
         None => {
@@ -29,11 +26,7 @@ pub fn get_header<'a>(table: &Node<'a>) -> Option<Vec<Header>> {
                 .filter(|tr| tr.find(Name("td")).collect::<Vec<_>>().is_empty())
                 .nth(0)
             {
-                Some(tr) => tr
-                    .find(Name("th"))
-                    .map(node_to_text)
-                    .map(Header::from)
-                    .collect::<Vec<_>>(),
+                Some(tr) => tr.find(Name("th")).map(node_to_text).collect::<Vec<_>>(),
                 None => vec![],
             }
         }
@@ -52,7 +45,7 @@ pub fn get_body<'a>(table: &Node<'a>) -> Option<Vec<Row>> {
             .find(Name("tr"))
             .map(|row| {
                 let mut headers = row.find(Name("th")).map(node_to_text);
-                let header = headers.next().map(Header::from);
+                let header = headers.next().map(String::from);
                 let data = row.find(Name("td")).map(node_to_text).collect::<Vec<_>>();
                 Row::from(header, data)
             })
@@ -74,7 +67,7 @@ pub fn get_footer<'a>(table: &Node<'a>) -> Option<Row> {
                 .find(Name("th"))
                 .map(node_to_text)
                 .nth(0)
-                .map(Header::from);
+                .map(String::from);
             let data = footer
                 .find(Name("td"))
                 .map(node_to_text)
