@@ -1,3 +1,4 @@
+use colored::Colorize;
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, Table as ComfyTable};
 
 /// Elements in <tr>
@@ -7,13 +8,6 @@ pub struct Row {
 }
 
 impl Row {
-    /// Create an empty row
-    pub fn new() -> Self {
-        Self {
-            header: None,
-            data: vec![],
-        }
-    }
     /// Create new row with args
     pub fn from(header: Option<String>, data: Vec<String>) -> Self {
         Self { header, data }
@@ -47,15 +41,6 @@ pub struct Table {
 }
 
 impl Table {
-    /// Create an empty table
-    pub fn new() -> Self {
-        Self {
-            caption: None,
-            header: None,
-            body: None,
-            footer: None,
-        }
-    }
     /// Create new table with args
     pub fn from(
         caption: Option<String>,
@@ -91,12 +76,7 @@ impl Table {
 impl ToString for Table {
     /// Convert table object into prettified string
     fn to_string(&self) -> String {
-        let caption = format!(
-            "{:-^15}\n{: ^15}\n{:-^15}",
-            "",
-            self.caption().unwrap_or("Table"),
-            ""
-        );
+        let caption = format!("{}", self.caption().unwrap_or("").green().bold());
         // Draw a table
         let mut table = ComfyTable::new();
         table
